@@ -54,6 +54,7 @@
     "BuildError": "Build error",
     "FlashError": "Flash error",
     "TargetMismatch": "The target you are trying to flash does not match the devices current target, if you are sure you want to do this, click Force Flash below",
+    "UnsupportedTarget": "The selected device is not supported by this firmware version. Select an older firmware version or a different device.",
     "Success": "Success!",
     "ErrorDetails": "An error has occured, see the above log for the exact error message. If you have not already done so, visit <ExpresslrsLink>Expresslrs.org</ExpresslrsLink> and read the <FlashingGuideLink>Flashing Guide</FlashingGuideLink> for your particular device as well as the <TroubleshootingGuideLink>Troubleshooting Guide</TroubleshootingGuideLink>. If you are still having issues after reviewing the documentation, please copy the build logs above to an online paste site and post in the #help-and-support channel on the <ExpressLRSDiscordLink>ExpressLRS Discord</ExpressLRSDiscordLink> with a link to the logs and other relevant information like your device, which flashing method you were using, and what steps you have already taken to resolve the issue."
   },
@@ -76,7 +77,8 @@
     "UnverifiedHardwareTitle": "UNVERIFIED HARDWARE",
     "UnverifiedHardwareContent": "The manufacturer of this hardware has not provided samples to the developers for evaluation and verification, contact them for support or proceed at your own risk. Not all features may work.",
     "DeviceCategory": "Device category",
-    "Device": "Device"
+    "Device": "Device",
+    "DeviceNotSupportedByVersion": "{{name}} is not supported by the selected firmware version and was deselected."
   },
   "FirmwareVersionForm": {
     "OfficialReleases": "Official releases",

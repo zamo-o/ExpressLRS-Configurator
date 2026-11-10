@@ -24,7 +24,8 @@ export enum BuildFirmwareErrorType {
   GitDependencyError = 'GitDependencyError',
   PlatformioDependencyError = 'PlatformioDependencyError',
   PythonDependencyError = 'PythonDependencyError',
-  TargetMismatch = 'TargetMismatch'
+  TargetMismatch = 'TargetMismatch',
+  UnsupportedTarget = 'UnsupportedTarget'
 }
 
 export enum BuildFirmwareStep {

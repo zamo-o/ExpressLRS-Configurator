@@ -13,6 +13,7 @@ export default tseslint.config(
       'logs/**',
       '*.log',
       'coverage/**',
+      'ZAMO/**',
       'build/**',
       '.eslintcache',
       'node_modules/**',

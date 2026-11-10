@@ -65,3 +65,7 @@ TODO.md
 # downloaded by dependencies/download-mac-dependencies.sh
 dependencies/darwin_x64/
 dependencies/darwin_arm64/
+
+# local course materials (ESS)
+ZAMO/
+CHANGES-808.md

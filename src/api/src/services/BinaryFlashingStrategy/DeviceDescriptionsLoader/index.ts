@@ -24,6 +24,8 @@ import UserDefineKey from '../../../library/FirmwareBuilder/Enum/UserDefineKey';
 import PullRequest from '../../../models/PullRequest';
 import { removeDirectoryContents } from '../../FlashingStrategyLocator/artefacts';
 import AmazonS3 from '../../../library/AmazonS3';
+import GitTargetsService from '../../TargetsLoader/GitTargets';
+import isDeviceAvailable from './isDeviceAvailable';
 
 export interface GitRepository {
   url: string;
@@ -51,6 +53,7 @@ export default class DeviceDescriptionsLoader {
     private PATH: string,
     private targetStorageGitPath: string,
     private deviceOptionsGitPath: string,
+    private gitTargetsService: GitTargetsService,
   ) {
     this.targetsMutex = new Mutex();
     this.deviceOptionsMutex = new Mutex();
@@ -117,14 +120,13 @@ export default class DeviceDescriptionsLoader {
     );
   }
 
-  async loadTargetsList(
+  private async loadTargetsDataDirectory(
     args: TargetArgs,
     gitRepository: GitRepository,
-  ): Promise<Device[]> {
-    let targetsDataDirectory = '';
+  ): Promise<string> {
     await this.targetsMutex.tryLockWithTimeout(15 * 60 * 1000);
     try {
-      targetsDataDirectory = await this.loadTargetsData(
+      return await this.loadTargetsData(
         this.targetStorageGitPath,
         args,
         gitRepository,
@@ -132,6 +134,38 @@ export default class DeviceDescriptionsLoader {
     } finally {
       this.targetsMutex.unlock();
     }
+  }
+
+  /*
+    PlatformIO envs from the firmware source of the selected version.
+    Returns null when they cannot be loaded, so that targets are not hidden
+    by mistake. Unsupported targets are still caught right before the build.
+   */
+  private async loadAvailableEnvs(
+    args: TargetArgs,
+    gitRepository: GitRepository,
+  ): Promise<string[] | null> {
+    try {
+      return await this.gitTargetsService.loadAvailableEnvs(
+        args,
+        gitRepository,
+      );
+    } catch (e) {
+      this.logger.warn('failed to load available PlatformIO envs', {
+        err: e,
+      });
+      return null;
+    }
+  }
+
+  async loadTargetsList(
+    args: TargetArgs,
+    gitRepository: GitRepository,
+  ): Promise<Device[]> {
+    const [targetsDataDirectory, envs] = await Promise.all([
+      this.loadTargetsDataDirectory(args, gitRepository),
+      this.loadAvailableEnvs(args, gitRepository),
+    ]);
 
     const targetsJSONLoader = new TargetsJSONLoader(this.logger);
     const targetsJSONPath = path.join(targetsDataDirectory, 'targets.json');
@@ -140,12 +174,7 @@ export default class DeviceDescriptionsLoader {
     );
     const devices: Device[] = [];
     Object.keys(data).forEach((id) => {
-      const { min_version } = data[id].config;
-      if (
-        !min_version
-        || args.source !== FirmwareSource.GitTag
-        || semver.gte(args.gitTag, min_version)
-      ) {
+      if (isDeviceAvailable(data[id].config, args, envs)) {
         devices.push(
           this.configToDevice(id, data[id].category, data[id].config),
         );

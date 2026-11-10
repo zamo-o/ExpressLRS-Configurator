@@ -8,6 +8,7 @@ enum BuildFirmwareErrorType {
   FlashError = 'FlashError',
   GenericError = 'GenericError',
   TargetMismatch = 'TargetMismatch',
+  UnsupportedTarget = 'UnsupportedTarget',
 }
 
 registerEnumType(BuildFirmwareErrorType, {

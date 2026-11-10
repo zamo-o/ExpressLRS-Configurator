@@ -18,6 +18,12 @@ import { removeDirectoryContents } from '../FlashingStrategyLocator/artefacts';
 export default class GitTargetsService extends TargetsLoader {
   mutex: Mutex;
 
+  /*
+    PlatformIO envs for immutable refs (tags, commits, pull request head commits),
+    keyed by repository url, firmware source and ref.
+   */
+  private envsCache: Map<string, string[]>;
+
   constructor(
     private logger: LoggerService,
     private deviceService: DeviceService,
@@ -26,12 +32,61 @@ export default class GitTargetsService extends TargetsLoader {
   ) {
     super();
     this.mutex = new Mutex();
+    this.envsCache = new Map();
+  }
+
+  private envsCacheKey(
+    args: TargetArgs,
+    gitRepository: Pick<GitRepository, 'url'>,
+  ): string | null {
+    switch (args.source) {
+      case FirmwareSource.GitTag:
+        return `${gitRepository.url}#${args.source}#${args.gitTag}`;
+      case FirmwareSource.GitCommit:
+        return `${gitRepository.url}#${args.source}#${args.gitCommit}`;
+      case FirmwareSource.GitPullRequest:
+        if (args.gitPullRequest === null) {
+          return null;
+        }
+        return `${gitRepository.url}#${args.source}#${args.gitPullRequest.headCommitHash}`;
+      default:
+        return null;
+    }
   }
 
   async loadTargetsList(
     args: TargetArgs,
     gitRepository: GitRepository,
   ): Promise<Device[]> {
+    const availableTargets = await this.loadAvailableEnvs(args, gitRepository);
+    const devices = this.deviceService.getDevices();
+    return devices
+      .map((value) => {
+        const device = { ...value };
+        device.targets = value.targets.filter((item) =>
+          availableTargets.find((target) => target === item.name),
+        );
+        return device;
+      })
+      .filter((item) => item.targets.length > 0);
+  }
+
+  /*
+    Returns PlatformIO env names ([env:...] sections in targets/*.ini) that exist
+    in the firmware source for the selected version.
+   */
+  async loadAvailableEnvs(
+    args: TargetArgs,
+    gitRepository: Pick<GitRepository, 'url' | 'srcFolder'>,
+  ): Promise<string[]> {
+    const cacheKey = this.envsCacheKey(args, gitRepository);
+    if (cacheKey !== null) {
+      const cached = this.envsCache.get(cacheKey);
+      if (cached !== undefined) {
+        return cached;
+      }
+    }
+
     await this.mutex.tryLockWithTimeout(60000);
 
     try {
@@ -106,16 +161,10 @@ export default class GitTargetsService extends TargetsLoader {
             `unsupported firmware source for the targets service: ${args.source}`,
           );
       }
-      const devices = this.deviceService.getDevices();
-      return devices
-        .map((value) => {
-          const device = { ...value };
-          device.targets = value.targets.filter((item) =>
-            availableTargets.find((target) => target === item.name),
-          );
-          return device;
-        })
-        .filter((item) => item.targets.length > 0);
+      if (cacheKey !== null) {
+        this.envsCache.set(cacheKey, availableTargets);
+      }
+      return availableTargets;
     } finally {
       this.mutex.unlock();
     }
@@ -124,6 +173,7 @@ export default class GitTargetsService extends TargetsLoader {
   async clearCache() {
     await this.mutex.tryLockWithTimeout(60000);
     try {
+      this.envsCache.clear();
       return await removeDirectoryContents(this.targetStoragePath);
     } finally {
       this.mutex.unlock();

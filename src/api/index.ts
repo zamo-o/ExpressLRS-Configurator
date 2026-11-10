@@ -157,6 +157,7 @@ export default class ApiServer {
       config.PATH,
       targetStorageGitPath,
       path.join(config.userDataPath, 'firmwares', 'device-options'),
+      targetsLoader,
     );
     const cloudBinariesCache = new CloudBinariesCache(
       config.cloudCacheServer,

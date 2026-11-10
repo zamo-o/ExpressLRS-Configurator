@@ -17,6 +17,7 @@
     "start:preload": "cross-env NODE_OPTIONS=\"--no-experimental-strip-types --import ts-node/esm --no-warnings\" NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
     "start:renderer": "cross-env NODE_OPTIONS=\"--no-experimental-strip-types --import ts-node/esm --no-warnings\" NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
     "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage",
     "gql-codegen": "graphql-codegen --config codegen.yml && yarn lint:fix",
     "prepare": "husky",
     "typecheck": "tsc --project tsconfig.json --noEmit --skipLibCheck"
@@ -187,6 +188,20 @@
     "testPathIgnorePatterns": [
       "release/app/dist",
       ".erb/dll"
+    ],
+    "collectCoverageFrom": [
+      "src/api/**/*.ts",
+      "src/ui/**/*.{ts,tsx}",
+      "!**/*.test.ts",
+      "!**/__fixtures__/**",
+      "!src/ui/gql/generated/**",
+      "!**/*.d.ts"
+    ],
+    "coverageReporters": [
+      "text",
+      "text-summary",
+      "html",
+      "json-summary"
     ]
   },
   "resolutions": {},

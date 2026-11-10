@@ -48,6 +48,8 @@ import { DeviceDescription } from './TargetsJSONLoader';
 import FlashOutputParserService, {
   FlashOutputParser,
 } from '../FlashOutputParser';
+import getCompileTarget from './compileTarget';
+import loadTargetsFromDirectory from '../TargetsLoader/loadTargetsFromDirectory';
 
 @Service()
 export default class BinaryFlashingStrategyService implements FlashingStrategy {
@@ -360,16 +362,30 @@ export default class BinaryFlashingStrategyService implements FlashingStrategy {
       = userDefines.find((item) => {
         return item.key === UserDefineKey.RX_AS_TX && item.enabled;
       }) !== undefined;
-    const firmwareName = rxAsTx
-      ? config.firmware.replace('_RX', '_TX')
-      : config.firmware;
+    return getCompileTarget(config, rxAsTx);
+  }
 
-    let target = `${firmwareName}_via_UART`;
-
-    if (config.upload_methods.includes('stlink')) {
-      target = `${config.firmware}_via_STLINK`;
+  /*
+    Checks that the PlatformIO env exists in the downloaded firmware source.
+    If the source has no targets/*.ini files we cannot tell, so we assume it does.
+   */
+  async isTargetInSource(
+    compileTarget: string,
+    firmwareSourcePath: string,
+  ): Promise<boolean> {
+    let envs: string[] = [];
+    try {
+      envs = await loadTargetsFromDirectory(
+        path.join(firmwareSourcePath, 'targets'),
+      );
+    } catch (e) {
+      this.logger?.log('failed to load targets from firmware source', {
+        firmwareSourcePath,
+        err: e,
+      });
+      return true;
     }
-    return target;
+    return envs.length === 0 || envs.includes(compileTarget);
   }
 
   getFirmwareBinFiles(firmwareSearchPath: string): string[] {
@@ -487,6 +503,24 @@ export default class BinaryFlashingStrategyService implements FlashingStrategy {
         },
       );
 
+      const compileTarget = this.getCompileTarget(config, params.userDefines);
+      if (!(await this.isTargetInSource(compileTarget, firmwareSourcePath))) {
+        this.logger?.error('target is not supported by the firmware source', undefined, {
+          target: params.target,
+          compileTarget,
+          firmwareSourcePath,
+        });
+        await this.updateProgress(
+          BuildProgressNotificationType.Error,
+          BuildFirmwareStep.DOWNLOADING_FIRMWARE,
+        );
+        return new BuildFlashFirmwareResult(
+          false,
+          `${config.product_name} (${compileTarget}) is not supported by the selected firmware version`,
+          BuildFirmwareErrorType.UnsupportedTarget,
+        );
+      }
+
       let sourceFirmwareBinPath = '';
       let firmwareArtifactsDirPath = '';
       const workingDirectory = await this.createWorkingDirectory(params.target);
@@ -542,9 +576,8 @@ export default class BinaryFlashingStrategyService implements FlashingStrategy {
 
       // we were not able to find cloud binaries, so we will build them on the spot
       if (firmwareDescriptionsPath === firmwareSourcePath) {
-        const target = this.getCompileTarget(config, params.userDefines);
         sourceFirmwareBinPath = await this.compileBinary(
-          target,
+          compileTarget,
           firmwareSourcePath,
           params.userDefines,
           flashOutputParser,

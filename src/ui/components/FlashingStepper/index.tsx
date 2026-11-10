@@ -95,7 +95,8 @@ type ErrorTitleKey =
   | 'BuildResponse.PlatformioDependencyError'
   | 'BuildResponse.BuildError'
   | 'BuildResponse.FlashError'
-  | 'BuildResponse.TargetMismatch';
+  | 'BuildResponse.TargetMismatch'
+  | 'BuildResponse.UnsupportedTarget';
 
 function errorTypeTitleKey(
   errorType: BuildFirmwareErrorType | null | undefined,
@@ -113,6 +114,8 @@ function errorTypeTitleKey(
       return 'BuildResponse.FlashError';
     case BuildFirmwareErrorType.TargetMismatch:
       return 'BuildResponse.TargetMismatch';
+    case BuildFirmwareErrorType.UnsupportedTarget:
+      return 'BuildResponse.UnsupportedTarget';
     case BuildFirmwareErrorType.GenericError:
     default:
       return 'BuildResponse.Error';

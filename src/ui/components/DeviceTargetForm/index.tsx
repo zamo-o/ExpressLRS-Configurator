@@ -38,6 +38,11 @@ const DeviceTargetForm: FunctionComponent<FirmwareVersionCardProps> = ({
 
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
 
+  // Name of the device that was deselected because it is missing from the new deviceTargets
+  const [removedDeviceName, setRemovedDeviceName] = useState<string | null>(
+    null,
+  );
+
   const { t } = useTranslation();
 
   const categorySelectOptions = useMemo(() => {
@@ -98,6 +103,7 @@ const DeviceTargetForm: FunctionComponent<FirmwareVersionCardProps> = ({
       if (value === currentCategory) {
         return;
       }
+      setRemovedDeviceName(null);
       if (value === null) {
         setCurrentCategory(null);
       } else {
@@ -112,6 +118,7 @@ const DeviceTargetForm: FunctionComponent<FirmwareVersionCardProps> = ({
 
   const onDeviceChange = useCallback(
     (value: string | null) => {
+      setRemovedDeviceName(null);
       if (value === null) {
         setCurrentDevice(null);
         onChange(null);
@@ -145,8 +152,10 @@ const DeviceTargetForm: FunctionComponent<FirmwareVersionCardProps> = ({
     if (!category && !device) {
       onCategoryChange(null);
       onDeviceChange(null);
+      setRemovedDeviceName(currentDevice.name);
     } else if (category && !device) {
       onDeviceChange(null);
+      setRemovedDeviceName(currentDevice.name);
     }
   }, [onCategoryChange, onDeviceChange, currentCategory, currentDevice]);
 
@@ -162,6 +171,13 @@ const DeviceTargetForm: FunctionComponent<FirmwareVersionCardProps> = ({
             {t('DeviceTargetForm.UnverifiedHardwareTitle')}
           </AlertTitle>
           {t('DeviceTargetForm.UnverifiedHardwareContent')}
+        </Alert>
+      )}
+      {removedDeviceName && (
+        <Alert severity="info" sx={styles.root}>
+          {t('DeviceTargetForm.DeviceNotSupportedByVersion', {
+            name: removedDeviceName,
+          })}
         </Alert>
       )}
       {deviceTargets && deviceTargets?.length > 0 && (

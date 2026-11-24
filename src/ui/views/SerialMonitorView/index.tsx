@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import CardTitle from '../../components/CardTitle';
 import SerialConnectionForm from '../../components/SerialConnectionForm';
 import EventsBatcher from '../../library/EventsBatcher';
+import LogBuffer, { EMPTY_LOG, LogSnapshot } from '../../library/LogBuffer';
 import { useMutation, useSubscription } from '@apollo/client/react';
 import {
   SerialMonitorEventType,
@@ -40,15 +41,13 @@ const SerialMonitorView: FunctionComponent = () => {
   /*
   We batch log events in order to save React.js state updates and rendering performance.
  */
-  const [logs, setLogs] = useState<string>('');
-  const logsRef = useRef<string[]>([]);
+  const [logs, setLogs] = useState<LogSnapshot>(EMPTY_LOG);
+  const logBufferRef = useRef<LogBuffer>(new LogBuffer());
   const eventsBatcherRef = useRef<EventsBatcher<string> | null>(null);
   useEffect(() => {
     eventsBatcherRef.current = new EventsBatcher<string>(200);
     eventsBatcherRef.current.onBatch((newLogs) => {
-      const newLogsList = [...logsRef.current, ...newLogs];
-      logsRef.current = newLogsList;
-      setLogs(newLogsList.join(''));
+      setLogs(logBufferRef.current.append(newLogs));
     });
   }, []);
   useSubscription(SerialMonitorLogsDocument, {
@@ -81,8 +80,8 @@ const SerialMonitorView: FunctionComponent = () => {
   const onConnect = (newSerialDevice: string, newBaudRate: number) => {
     setSerialDevice(newSerialDevice);
     setBaudRate(newBaudRate);
-    setLogs('');
-    logsRef.current = [];
+    setLogs(EMPTY_LOG);
+    logBufferRef.current.reset();
     connectToSerialDeviceMutation({
       variables: {
         input: {

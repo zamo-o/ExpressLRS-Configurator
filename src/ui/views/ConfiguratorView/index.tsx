@@ -47,6 +47,10 @@ import DeviceOptionsForm, {
 import ShowAlerts from '../../components/ShowAlerts';
 import CardTitle from '../../components/CardTitle';
 import Logs from '../../components/Logs';
+import {
+  LogSnapshot,
+  logSnapshotToString,
+} from '../../library/LogBuffer';
 import FlashingStepper from '../../components/FlashingStepper';
 import {
   BuildFirmwareErrorType,
@@ -170,7 +174,7 @@ interface ConfiguratorViewProps {
   deviceType: DeviceType;
   buildProgressNotifications: BuildProgressNotification[];
   resetBuildProgressNotifications: () => void;
-  buildLogs: string;
+  buildLogs: LogSnapshot;
   resetBuildLogs: () => void;
 }
 
@@ -854,7 +858,7 @@ const ConfiguratorView: FunctionComponent<ConfiguratorViewProps> = (props) => {
 
   const saveBuildLogToFile = useCallback(async () => {
     const saveFileRequestBody: SaveFileRequestBody = {
-      data: buildLogs,
+      data: logSnapshotToString(buildLogs),
       defaultPath: `ExpressLRSBuildLog_${new Date()
         .toISOString()
         .replace(/[^0-9]/gi, '')}.txt`,
@@ -1184,7 +1188,9 @@ const ConfiguratorView: FunctionComponent<ConfiguratorViewProps> = (props) => {
                       aria-label={t('ConfiguratorView.CopyLogToClipboard')}
                       title={t('ConfiguratorView.CopyLogToClipboard')}
                       onClick={async () => {
-                        await navigator.clipboard.writeText(buildLogs);
+                        await navigator.clipboard.writeText(
+                          logSnapshotToString(buildLogs),
+                        );
                       }}
                     >
                       <ContentCopy />

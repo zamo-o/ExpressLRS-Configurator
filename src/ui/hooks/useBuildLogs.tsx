@@ -3,20 +3,19 @@ import { useSubscription } from '@apollo/client/react';
 import { BuildLogUpdatesDocument } from '../gql/generated/types';
 import client from '../gql';
 import EventsBatcher from '../library/EventsBatcher';
+import LogBuffer, { EMPTY_LOG, LogSnapshot } from '../library/LogBuffer';
 
 export default function useBuildLogs() {
   /*
     We batch log events in order to save React.js state updates and rendering performance.
    */
-  const [buildLogs, setLogs] = useState<string>('');
-  const logsRef = useRef<string[]>([]);
+  const [buildLogs, setLogs] = useState<LogSnapshot>(EMPTY_LOG);
+  const logBufferRef = useRef<LogBuffer>(new LogBuffer());
   const eventsBatcherRef = useRef<EventsBatcher<string> | null>(null);
   useEffect(() => {
     eventsBatcherRef.current = new EventsBatcher<string>(200);
     eventsBatcherRef.current.onBatch((newLogs) => {
-      const newLogsList = [...logsRef.current, ...newLogs];
-      logsRef.current = newLogsList;
-      setLogs(newLogsList.join(''));
+      setLogs(logBufferRef.current.append(newLogs));
     });
   }, []);
   useSubscription(BuildLogUpdatesDocument, {
@@ -31,8 +30,8 @@ export default function useBuildLogs() {
   });
 
   const resetLogs = () => {
-    logsRef.current = [];
-    setLogs('');
+    logBufferRef.current.reset();
+    setLogs(EMPTY_LOG);
   };
 
   return {
